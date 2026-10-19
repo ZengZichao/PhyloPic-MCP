@@ -1,0 +1,48 @@
+{
+  "name": "phylopic-mcp",
+  "version": "0.1.0",
+  "description": "An MCP (Model Context Protocol) server for the PhyloPic API, providing access to free silhouette images of organisms searchable by phylogeny.",
+  "license": "MIT",
+  "author": "ZengZichao",
+  "homepage": "https://github.com/ZengZichao/phylopic-mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZengZichao/phylopic-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ZengZichao/phylopic-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "phylopic",
+    "silhouette",
+    "biology",
+    "phylogeny",
+    "taxonomy",
+    "model-context-protocol",
+    "ai",
+    "llm"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "phylopic-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "inspector": "npx @modelcontextprotocol/inspector node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
