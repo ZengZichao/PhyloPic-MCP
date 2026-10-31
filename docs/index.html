@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="An MCP (Model Context Protocol) server for the PhyloPic API, providing AI assistants access to free silhouette images of organisms searchable by phylogeny.">
+    <meta name="author" content="ZengZichao">
+    <meta property="og:title" content="PhyloPic MCP Server">
+    <meta property="og:description" content="An MCP server for the PhyloPic API 鈥?free silhouette images of organisms searchable by phylogeny.">
+    <meta property="og:type" content="website">
+    <title>PhyloPic MCP Server</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=Source+Code+Pro:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* 鈹€鈹€ Reset & Base 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+            --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --mono: 'Source Code Pro', 'SF Mono', Consolas, 'Liberation Mono', monospace;
+
+            --text: #1a1a1a;
+            --text-light: #555;
+            --text-faint: #888;
+            --link: #1a5276;
+            --link-hover: #0d3b5e;
+            --border: #d4d4d4;
+            --border-light: #e8e8e8;
+            --bg: #ffffff;
+            --bg-soft: #f7f7f5;
+            --bg-code: #f4f4f2;
+            --accent: #2c3e50;
+            --tag-bg: #eef2f7;
+            --tag-text: #3a5a7a;
+
+            --max-width: 860px;
+            --radius: 4px;
+        }
+
+        html { font-size: 17px; scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--serif);
+            color: var(--text);
+            background: var(--bg);
+            line-height: 1.75;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* 鈹€鈹€ Layout 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        .wrapper { max-width: var(--max-width); margin: 0 auto; padding: 0 2rem; }
+
+        /* 鈹€鈹€ Header / Hero 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        header {
+            padding: 3rem 0 2rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .version-badge {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--tag-text);
+            background: var(--tag-bg);
+            border-radius: 100px;
+            padding: 0.15rem 0.7rem;
+            margin-bottom: 0.6rem;
+            letter-spacing: 0.02em;
+        }
+
+        header h1 {
+            font-family: var(--serif);
+            font-size: 1.9rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        header h1 .mono {
+            font-family: var(--mono);
+            font-weight: 600;
+        }
+
+        .tagline {
+            font-size: 1.05rem;
+            color: var(--text-light);
+            line-height: 1.6;
+            max-width: 640px;
+        }
+
+        .header-links {
+            display: flex;
+            gap: 1.2rem;
+            margin-top: 1.1rem;
+            font-family: var(--sans);
+            font-size: 0.87rem;
+        }
+
+        .header-links a {
+            color: var(--link);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        .header-links a:hover { border-bottom-color: var(--link); }
+        .header-links .sep { color: var(--border); }
+
+        /* 鈹€鈹€ Disclaimer 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        .disclaimer {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            background: var(--bg-soft);
+            border-left: 3px solid var(--border);
+            padding: 0.6rem 1rem;
+            margin: 1.5rem 0 0;
+            border-radius: 0 var(--radius) var(--radius) 0;
+            line-height: 1.6;
+        }
+
+        /* 鈹€鈹€ Section 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        section {
+            padding: 2.2rem 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        section:last-of-type { border-bottom: none; }
+
+        h2 {
+            font-family: var(--serif);
+            font-size: 1.3rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            margin-bottom: 1rem;
+        }
+
+        h3 {
+            font-family: var(--sans);
+            font-size: 0.98rem;
+            font-weight: 600;
+            margin-top: 1.3rem;
+            margin-bottom: 0.4rem;
+            color: var(--accent);
+        }
+
+        p { margin-bottom: 0.8rem; }
+
+        a {
+            color: var(--link);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.15s;
+        }
+
+        a:hover { border-bottom-color: var(--link); }
+
+        ul, ol { padding-left: 1.4rem; margin-bottom: 0.8rem; }
+        li { margin-bottom: 0.25rem; }
+
+        strong { font-weight: 600; }
+
+        /* 鈹€鈹€ Code 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        code {
+            font-family: var(--mono);
+            font-size: 0.85em;
+            background: var(--bg-code);
+            padding: 0.12em 0.35em;
+            border-radius: 3px;
+        }
+
+        pre {
+            font-family: var(--mono);
+            font-size: 0.83rem;
+            line-height: 1.55;
+            background: var(--bg-code);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            padding: 0.85rem 1rem;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+        }
+
+        pre code { background: none; padding: 0; border-radius: 0; font-size: inherit; }
+
+        /* 鈹€鈹€ Tables 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        .table-wrap { overflow-x: auto; margin-bottom: 1rem; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            font-family: var(--sans);
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.5rem 0.8rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--accent);
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+        }
+
+        td code { font-size: 0.82em; }
+        td .yes { color: #2a7a2a; font-weight: 600; }
+        td .no { color: #999; }
+
+        /* 鈹€鈹€ Feature grid 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .feature {
+            background: var(--bg-soft);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            padding: 1rem 1.1rem;
+        }
+
+        .feature h3 {
+            margin-top: 0;
+            font-size: 0.92rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .feature h3 .icon { font-size: 0.9rem; }
+        .feature p { font-size: 0.86rem; color: var(--text-light); margin-bottom: 0; line-height: 1.55; }
+
+        /* 鈹€鈹€ Tool list 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        .tool-list {
+            font-family: var(--sans);
+            counter-reset: tool;
+        }
+
+        .tool {
+            counter-increment: tool;
+            padding: 0.85rem 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .tool:last-child { border-bottom: none; }
+
+        .tool-head {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .tool-num {
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            color: var(--text-faint);
+            min-width: 1.6rem;
+        }
+
+        .tool-name {
+            font-family: var(--mono);
+            font-size: 0.87rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .tool-desc {
+            font-size: 0.88rem;
+            color: var(--text-light);
+            margin-top: 0.15rem;
+            margin-left: 2.1rem;
+            line-height: 1.55;
+        }
+
+        /* 鈹€鈹€ Callout 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        .callout {
+            font-size: 0.88rem;
+            background: var(--bg-soft);
+            border: 1px solid var(--border-light);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 var(--radius) var(--radius) 0;
+            padding: 0.7rem 1rem;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        /* 鈹€鈹€ Scenario steps 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        .scenario {
+            margin-bottom: 1rem;
+        }
+        .scenario h3 { margin-top: 0.8rem; }
+        .scenario ol { font-size: 0.92rem; }
+        .scenario ol li { margin-bottom: 0.35rem; }
+
+        /* 鈹€鈹€ Footer 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        footer {
+            padding: 2rem 0 3rem;
+            font-family: var(--sans);
+            font-size: 0.83rem;
+            color: var(--text-faint);
+            border-top: 1px solid var(--border-light);
+        }
+
+        footer .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem 1.2rem;
+            margin-bottom: 0.6rem;
+        }
+
+        footer a {
+            color: var(--text-light);
+            border-bottom: none;
+        }
+        footer a:hover { color: var(--link); }
+
+        /* 鈹€鈹€ TOC (sidebar on desktop) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        .toc {
+            position: fixed;
+            top: 2rem;
+            left: calc(50% - var(--max-width)/2 - 13rem);
+            width: 11rem;
+            font-family: var(--sans);
+            font-size: 0.78rem;
+            color: var(--text-faint);
+        }
+
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { margin-bottom: 0.3rem; }
+        .toc a { color: var(--text-light); border-bottom: none; }
+        .toc a:hover { color: var(--link); }
+
+        @media (max-width: 1180px) { .toc { display: none; } }
+
+        /* 鈹€鈹€ Responsive 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        @media (max-width: 640px) {
+            html { font-size: 16px; }
+            .wrapper { padding: 0 1.2rem; }
+            header { padding: 2rem 0 1.5rem; }
+            header h1 { font-size: 1.55rem; }
+            .tagline { font-size: 0.95rem; }
+            .header-links { flex-wrap: wrap; gap: 0.8rem 1rem; }
+            .tool-desc { margin-left: 0; }
+        }
+
+        /* 鈹€鈹€ Misc 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+        .center { text-align: center; }
+        .muted { color: var(--text-light); }
+        hr { border: none; border-top: 1px solid var(--border-light); margin: 1.5rem 0; }
+    </style>
+</head>
+<body>
+
+<nav class="toc">
+    <ul>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#installation">Installation</a></li>
+        <li><a href="#configuration">Configuration</a></li>
+        <li><a href="#tools">Tools</a></li>
+        <li><a href="#usage">Usage Examples</a></li>
+        <li><a href="#technical">Technical Notes</a></li>
+        <li><a href="#license">License</a></li>
+        <li><a href="#acknowledgments">Acknowledgments</a></li>
+    </ul>
+</nav>
+
+<div class="wrapper">
+
+    <!-- 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?Header 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?-->
+    <header>
+        <span class="version-badge">v0.1.0</span>
+        <h1>PhyloPic <span class="mono">MCP</span> Server</h1>
+        <p class="tagline">
+            A Model Context Protocol server for the
+            <a href="https://www.phylopic.org/" target="_blank" rel="noopener">PhyloPic</a> API 鈥?
+            an open database of freely reusable silhouette images of organisms,
+            searchable by phylogeny.
+        </p>
+        <div class="header-links">
+            <a href="https://github.com/ZengZichao/phylopic-mcp" target="_blank" rel="noopener">GitHub</a>
+            <span class="sep">路</span>
+            <a href="https://www.phylopic.org/" target="_blank" rel="noopener">PhyloPic</a>
+            <span class="sep">路</span>
+            <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">MCP</a>
+            <span class="sep">路</span>
+            <a href="https://github.com/ZengZichao/phylopic-mcp#readme" target="_blank" rel="noopener">README (EN)</a>
+            <span class="sep">路</span>
+            <a href="https://github.com/ZengZichao/phylopic-mcp/blob/main/README.zh-CN.md" target="_blank" rel="noopener">README (涓枃)</a>
+        </div>
+        <div class="disclaimer">
+            <strong>Disclaimer:</strong> This is an <strong>unofficial, third-party</strong> implementation
+            and is not affiliated with, endorsed by, or officially connected to
+            <a href="https://www.phylopic.org/" target="_blank" rel="noopener">PhyloPic</a>
+            or its maintainers. PhyloPic is an independent project created and maintained by T.&nbsp;Michael&nbsp;Keesey.
+        </div>
+    </header>
+
+    <!-- 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?Overview 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?-->
+    <section id="overview">
+        <h2>Overview</h2>
+        <p>
+            This MCP server wraps the PhyloPic API v2 as a set of MCP tools, enabling AI assistants
+            such as <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a> to:
+        </p>
+        <ul>
+            <li><strong>Search for taxa</strong> 鈥?find phylogenetic nodes by scientific name (e.g., "Primates", "Homo sapiens", "Aves")</li>
+            <li><strong>Retrieve silhouette images</strong> 鈥?get detailed image information including download links at various resolutions</li>
+            <li><strong>Browse contributors</strong> 鈥?list all image contributors and their contribution statistics</li>
+            <li><strong>Resolve external identifiers</strong> 鈥?convert IDs from GBIF, NCBI, Open Tree of Life, etc. to PhyloPic nodes</li>
+            <li><strong>View taxonomic lineages</strong> 鈥?get the ancestral lineage chain for any node</li>
+            <li><strong>Check API status</strong> 鈥?verify PhyloPic API availability</li>
+        </ul>
+    </section>
+
+    <!-- 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?Features 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?-->
+    <section id="features">
+        <h2>Features</h2>
+        <div class="features">
+            <div class="feature">
+                <h3><span class="icon">鉁?/span> Complete API Coverage</h3>
+                <p>Wraps all read-only PhyloPic API v2 endpoints with full type safety.</p>
+            </div>
+            <div class="feature">
+                <h3><span class="icon">鉁?/span> Automatic Build Management</h3>
+                <p>Handles PhyloPic API build numbers with stale-build auto-retry logic.</p>
+            </div>
+            <div class="feature">
+                <h3><span class="icon">鉁?/span> Stdio Transport</h3>
+                <p>Communicates via standard stdio transport, compatible with any MCP client.</p>
+            </div>
+            <div class="feature">
+                <h3><span class="icon">鉁?/span> Input Validation</h3>
+                <p>Uses <a href="https://zod.dev" target="_blank" rel="noopener">Zod</a> schemas for rigorous input parameter validation.</p>
+            </div>
+            <div class="feature">
+                <h3><span class="icon">鉁?/span> Error Handling</h3>
+                <p>Comprehensive error handling with clear, user-friendly diagnostic messages.</p>
+            </div>
+            <div class="feature">
+                <h3><span class="icon">鉁?/span> TypeScript</h3>
+                <p>Written entirely in TypeScript for end-to-end type safety.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?Installation 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?-->
+    <section id="installation">
+        <h2>Installation</h2>
+        <h3>Prerequisites</h3>
+        <ul>
+            <li>Node.js &ge; 18.0.0</li>
+            <li>npm or another package manager</li>
+        </ul>
+        <h3>Install from Source</h3>
+<pre><code><span class="muted"># Clone the repository</span>
+git clone https://github.com/ZengZichao/phylopic-mcp.git
+cd phylopic-mcp
+
+<span class="muted"># Install dependencies</span>
+npm install
+
+<span class="muted"># Build TypeScript</span>
+npm run build</code></pre>
+        <p>The compiled files will be in the <code>dist/</code> directory.</p>
+    </section>
+
+    <!-- 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?Configuration 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?-->
+    <section id="configuration">
+        <h2>Configuration</h2>
+        <h3>Using with Claude Desktop</h3>
+        <p>
+            Add the PhyloPic MCP server to your Claude Desktop configuration file:
+        </p>
+        <p>
+            <strong>macOS:</strong> <code>~/Library/Application Support/Claude/claude_desktop_config.json</code><br>
+            <strong>Windows:</strong> <code>%APPDATA%\Claude\claude_desktop_config.json</code>
+        </p>
+<pre><code>{
+  "mcpServers": {
+    "phylopic": {
+      "command": "node",
+      "args": [
+        "C:\\path\\to\\phylopic-mcp\\dist\\index.js"
+      ]
+    }
+  }
+}</code></pre>
+        <div class="callout">
+            Replace the path with the actual absolute path to your <code>dist/index.js</code>.
+        </div>
+        <h3>Using with Other MCP Clients</h3>
+        <p>
+            This server uses the standard stdio transport protocol and is compatible with any
+            MCP-supporting client. The launch command is:
+        </p>
+<pre><code>node /path/to/phylopic-mcp/dist/index.js</code></pre>
+        <h3>Debugging with MCP Inspector</h3>
+<pre><code>npm run inspector</code></pre>
+        <p>This will launch the MCP Inspector web interface for interactive testing.</p>
+    </section>
+
+    <!-- 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?Tools 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?-->
+    <section id="tools">
+        <h2>Available Tools</h2>
+        <p>This server provides <strong>16 MCP tools</strong>:</p>
+        <div class="tool-list">
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">01</span>
+                    <span class="tool-name">search_taxa</span>
+                </div>
+                <div class="tool-desc">Search for phylogenetic nodes by scientific name. <code>query</code> (string, required), <code>page</code> (number, optional).</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">02</span>
+                    <span class="tool-name">autocomplete_taxa</span>
+                </div>
+                <div class="tool-desc">Get taxonomic name suggestions based on partial text. <code>query</code> (string, required).</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">03</span>
+                    <span class="tool-name">get_node</span>
+                </div>
+                <div class="tool-desc">Get detailed information about a phylogenetic node by UUID. <code>uuid</code> (required), optional embeds: <code>embed_parentNode</code>, <code>embed_primaryImage</code>.</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">04</span>
+                    <span class="tool-name">get_node_lineage</span>
+                </div>
+                <div class="tool-desc">Get the ancestral lineage chain for a given node. <code>uuid</code> (required).</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">05</span>
+                    <span class="tool-name">get_root_node</span>
+                </div>
+                <div class="tool-desc">Get the root phylogenetic node (common ancestor of all organisms). Optional: <code>embed_primaryImage</code>.</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">06</span>
+                    <span class="tool-name">get_image</span>
+                </div>
+                <div class="tool-desc">Get detailed image information including download links. <code>uuid</code> (required), optional embeds: <code>embed_contributor</code>, <code>embed_generalNode</code>, <code>embed_specificNode</code>, <code>embed_nodes</code>.</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">07</span>
+                    <span class="tool-name">search_images_by_node</span>
+                </div>
+                <div class="tool-desc">List images that directly represent a specific node. <code>node_uuid</code> (required), <code>page</code> (optional).</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">08</span>
+                    <span class="tool-name">search_images_by_clade</span>
+                </div>
+                <div class="tool-desc">List images within a clade (node and all descendants). <code>clade_uuid</code> (required), <code>page</code> (optional).</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">09</span>
+                    <span class="tool-name">list_images_by_contributor</span>
+                </div>
+                <div class="tool-desc">List all images uploaded by a specific contributor. <code>contributor_uuid</code> (required), <code>page</code> (optional).</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">10</span>
+                    <span class="tool-name">list_contributors</span>
+                </div>
+                <div class="tool-desc">List all contributors, sorted by image count. <code>page</code> (optional).</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">11</span>
+                    <span class="tool-name">get_contributor</span>
+                </div>
+                <div class="tool-desc">Get detailed contributor information by UUID. <code>uuid</code> (required).</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">12</span>
+                    <span class="tool-name">list_licenses</span>
+                </div>
+                <div class="tool-desc">List all Creative Commons licenses for image submissions. No parameters.</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">13</span>
+                    <span class="tool-name">list_namespaces</span>
+                </div>
+                <div class="tool-desc">List authorized external taxonomic database namespaces. No parameters.</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">14</span>
+                    <span class="tool-name">resolve_external_id</span>
+                </div>
+                <div class="tool-desc">Resolve an external database identifier to a PhyloPic node. <code>authority</code>, <code>namespace</code>, <code>object_id</code> (all required).</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">15</span>
+                    <span class="tool-name">get_api_info</span>
+                </div>
+                <div class="tool-desc">Get API general information: version, build number, endpoints. No parameters.</div>
+            </div>
+            <div class="tool">
+                <div class="tool-head">
+                    <span class="tool-num">16</span>
+                    <span class="tool-name">ping</span>
+                </div>
+                <div class="tool-desc">Check if the PhyloPic API is operational. No parameters.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?Usage Examples 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?-->
+    <section id="usage">
+        <h2>Usage Examples</h2>
+
+        <div class="scenario">
+            <h3>Scenario 1 鈥?Find a Silhouette of an Organism</h3>
+            <ol>
+                <li>Use <code>autocomplete_taxa</code> with "dro" 鈫?discover "drosophila"</li>
+                <li>Use <code>search_taxa</code> to search "drosophila" 鈫?get the node UUID</li>
+                <li>Use <code>search_images_by_node</code> with the node UUID 鈫?get the image list</li>
+                <li>Use <code>get_image</code> to get specific image download links</li>
+            </ol>
+        </div>
+
+        <div class="scenario">
+            <h3>Scenario 2 鈥?Find All Images of a Class</h3>
+            <ol>
+                <li>Use <code>search_taxa</code> to search "aves" (birds) 鈫?get the node UUID</li>
+                <li>Use <code>search_images_by_clade</code> with the node UUID 鈫?get all bird images</li>
+            </ol>
+        </div>
+
+        <div class="scenario">
+            <h3>Scenario 3 鈥?Look Up by NCBI Taxon ID</h3>
+            <ol>
+                <li>Use <code>list_namespaces</code> to see available databases</li>
+                <li>Use <code>resolve_external_id</code> with authority="ncbi.nlm.nih.gov", namespace="taxid", object_id="9443" (Primates)</li>
+                <li>Use the returned node UUID to further query images</li>
+            </ol>
+        </div>
+    </section>
+
+    <!-- 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?Technical Notes 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?-->
+    <section id="technical">
+        <h2>Technical Notes</h2>
+
+        <h3>PhyloPic API Build Numbers</h3>
+        <p>
+            The PhyloPic API uses a build number system. Each API request must include the current
+            build number; otherwise a <code>307 Temporary Redirect</code> is returned. This server's
+            API client automatically handles build numbers:
+        </p>
+        <ol>
+            <li>On the first request, it fetches the current build number from the API root endpoint</li>
+            <li>Subsequent requests reuse the cached build number</li>
+            <li>If a <code>410 Gone</code> response is received (stale build), it automatically re-fetches and retries</li>
+        </ol>
+
+        <h3>Image File Formats</h3>
+        <p>Each PhyloPic image provides multiple file formats:</p>
+        <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Format</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>sourceFile</code></td><td>The original uploaded file</td></tr>
+                <tr><td><code>vectorFile</code></td><td>Auto-generated SVG vector graphic (pure black on transparent background)</td></tr>
+                <tr><td><code>rasterFiles</code></td><td>PNG raster files at various sizes (largest to smallest)</td></tr>
+                <tr><td><code>thumbnailFiles</code></td><td>Square thumbnail images (PNG format)</td></tr>
+                <tr><td><code>social preview</code></td><td>Social media preview image (1200&times;628)</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <h3>Licensing</h3>
+        <p>
+            Images on PhyloPic are available under Creative Commons licenses, including CC0 (public domain),
+            CC-BY, CC-BY-SA, and others. License information for each image can be retrieved using the
+            <code>get_image</code> tool. For details, see the
+            <a href="https://www.phylopic.org/articles/image-usage" target="_blank" rel="noopener">PhyloPic image usage guide</a>.
+        </p>
+    </section>
+
+    <!-- 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?License 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?-->
+    <section id="license">
+        <h2>License</h2>
+        <p>
+            This project is licensed under the
+            <a href="https://github.com/ZengZichao/phylopic-mcp/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>.
+        </p>
+    </section>
+
+    <!-- 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?Acknowledgments 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?-->
+    <section id="acknowledgments">
+        <h2>Acknowledgments</h2>
+        <ul>
+            <li>
+                <a href="https://www.phylopic.org/" target="_blank" rel="noopener">PhyloPic</a> 鈥?
+                An open database of organism silhouettes, created and maintained by T. Michael Keesey.
+                This project is an independent, unofficial third-party tool.
+            </li>
+            <li>
+                <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a> 鈥?
+                An AI context protocol developed by Anthropic.
+            </li>
+            <li>All PhyloPic image contributors 鈥?Thank you for providing free silhouette images.</li>
+        </ul>
+    </section>
+
+    <!-- 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?Footer 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?-->
+    <footer>
+        <div class="footer-links">
+            <a href="https://github.com/ZengZichao/phylopic-mcp" target="_blank" rel="noopener">GitHub</a>
+            <a href="https://www.phylopic.org/" target="_blank" rel="noopener">PhyloPic Website</a>
+            <a href="https://api-docs.phylopic.org/v2/index.html" target="_blank" rel="noopener">API Docs</a>
+            <a href="https://www.phylopic.org/articles/api-recipes" target="_blank" rel="noopener">API Recipes</a>
+            <a href="https://github.com/keesey/phylopic" target="_blank" rel="noopener">PhyloPic Repo</a>
+            <a href="https://spec.modelcontextprotocol.io/" target="_blank" rel="noopener">MCP Spec</a>
+            <a href="https://github.com/modelcontextprotocol/typescript-sdk" target="_blank" rel="noopener">MCP TypeScript SDK</a>
+        </div>
+        <p class="muted">
+            PhyloPic MCP Server v0.1.0 &middot; MIT License &middot; &copy; 2026 ZengZichao
+        </p>
+    </footer>
+
+</div>
+
+</body>
+</html>
